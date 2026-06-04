@@ -1,10 +1,18 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/detection_result.dart';
 
 /// Manages local persistence of detection history using SharedPreferences.
 class HistoryService {
   static const String _historyKey = 'potaleaf_history';
+
+  /// Broadcasts changes to the history list
+  static final ValueNotifier<int> historyUpdateNotifier = ValueNotifier<int>(0);
+
+  static void notifyHistoryChanged() {
+    historyUpdateNotifier.value++;
+  }
 
   /// Load all saved detection results from local storage.
   Future<List<DetectionResult>> getHistory() async {
@@ -19,6 +27,7 @@ class HistoryService {
     final jsonList = prefs.getStringList(_historyKey) ?? [];
     jsonList.insert(0, result.toJsonString()); // Newest first
     await prefs.setStringList(_historyKey, jsonList);
+    notifyHistoryChanged();
   }
 
   /// Delete a detection result by ID.
@@ -32,11 +41,13 @@ class HistoryService {
     }).toList();
 
     await prefs.setStringList(_historyKey, updatedList);
+    notifyHistoryChanged();
   }
 
   /// Clear all history.
   Future<void> clearHistory() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_historyKey);
+    notifyHistoryChanged();
   }
 }

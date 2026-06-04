@@ -47,4 +47,6 @@ class AppColors {
   static const Color healthyBadge = Color(0xFF66BB6A);
   static const Color fungiBadge = Color(0xFFAB47BC);
   static const Color bacteriaBadge = Color(0xFF26C6DA); // Teal-cyan for Bacteria
+  static const Color nematodeBadge = Color(0xFFFF7043); // Orange-red for Nematode
+  static const Color phytophthoraBadge = Color(0xFF5C6BC0); // Indigo-blue for Phytophthora
 }

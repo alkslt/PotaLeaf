@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../models/detection_result.dart';
 import '../services/history_service.dart';
-import '../widgets/frosted_container.dart';
+
 
 /// Detailed view of a past detection result with frosted glass cards.
 class HistoryDetailScreen extends StatefulWidget {
@@ -30,6 +30,10 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
         return AppColors.fungiBadge;
       case 'Bacteria':
         return AppColors.bacteriaBadge;
+      case 'Nematode':
+        return AppColors.nematodeBadge;
+      case 'Phytophthora':
+        return AppColors.phytophthoraBadge;
       default:
         return AppColors.gray;
     }
@@ -117,7 +121,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFF0F120D), // Immersive dark solid background
       body: Stack(
         children: [
           // ── Background Leaf image on upper half ──
@@ -136,11 +140,12 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.35, 0.75, 1.0],
                       colors: [
-                        Colors.black38,
+                        Colors.black.withValues(alpha: 0.4),
                         Colors.transparent,
-                        const Color(0xFF10130E).withValues(alpha: 0.8),
-                        const Color(0xFF10130E),
+                        const Color(0xFF0F120D).withValues(alpha: 0.85),
+                        const Color(0xFF0F120D),
                       ],
                     ),
                   ),
@@ -198,21 +203,21 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                   ),
                   const SizedBox(height: 28),
 
-                  // Frost Cards list
+                  // Solid Cards list
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       children: [
                         // Card 1: Gejala
-                        _buildFrostedSection('Gejala', result.gejala),
+                        _buildSolidSection('Gejala', result.gejala),
                         const SizedBox(height: 14),
 
                         // Card 2: Penyebab
-                        _buildFrostedSection('Penyebab', result.penyebab),
+                        _buildSolidSection('Penyebab', result.penyebab),
                         const SizedBox(height: 14),
 
                         // Card 3: Perawatan / Pencegahan
-                        _buildFrostedSection('Perawatan', result.caraPencegahan),
+                        _buildSolidSection('Perawatan', result.caraPencegahan),
                         const SizedBox(height: 32),
                       ],
                     ),
@@ -260,11 +265,14 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     );
   }
 
-  Widget _buildFrostedSection(String title, String content) {
-    return FrostedContainer(
+  Widget _buildSolidSection(String title, String content) {
+    return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      borderRadius: 16,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B201A), // Solid dark grey card background
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -276,12 +284,12 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
               color: AppColors.white,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             content,
             style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
+              fontSize: 12.5,
+              color: Color(0xFF9EAA98), // Muted green-gray text color
               height: 1.6,
             ),
           ),

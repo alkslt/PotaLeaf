@@ -16,7 +16,7 @@ class TfliteService {
   // ==========================================
   // To build MobileNetV2 APK: set this to ModelType.mobileNetV2
   // To build ResNet50 APK: set this to ModelType.resNet50
-  static const ModelType activeModel = ModelType.mobileNetV2;
+  static const ModelType activeModel = ModelType.resNet50;
 
   Interpreter? _interpreter;
   bool _isModelLoaded = false;

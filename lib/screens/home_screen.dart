@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../models/detection_result.dart';
 import '../services/history_service.dart';
 import '../widgets/frosted_container.dart';
+import 'history_detail_screen.dart';
 
 /// Home dashboard matching the high-fidelity Figma UI design with frosted cards.
 class HomeScreen extends StatefulWidget {
@@ -24,11 +26,36 @@ class _HomeScreenState extends State<HomeScreen> {
   final HistoryService _historyService = HistoryService();
   List<DetectionResult> _historyList = [];
   bool _isLoading = true;
+  String _userName = 'Pengguna';
+
+  String get _firstName {
+    final trimmed = _userName.trim();
+    if (trimmed.isEmpty) return 'Pengguna';
+    return trimmed.split(' ').first;
+  }
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
+    _loadUserName();
+    HistoryService.historyUpdateNotifier.addListener(_loadHistory);
+  }
+
+  @override
+  void dispose() {
+    HistoryService.historyUpdateNotifier.removeListener(_loadHistory);
+    super.dispose();
+  }
+
+  Future<void> _loadUserName() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString('user_name') ?? 'Pengguna';
+    if (mounted) {
+      setState(() {
+        _userName = name;
+      });
+    }
   }
 
   Future<void> _loadHistory() async {
@@ -92,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final samples = DetectionResult.staticSamples.take(4).toList(); // Show 4 samples as in Figma
+    final samples = DetectionResult.staticSamples; // Show all 7 samples
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -105,9 +132,9 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ── Greeting Header ──
-                const Text(
-                  'HI, Pengguna!',
-                  style: TextStyle(
+                Text(
+                  'Hi, $_firstName!',
+                  style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: AppColors.white,
@@ -149,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Category badges (Virus, Pest, Healthy, Fungi)
+                      // Category badges (all 7 categories)
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         physics: const BouncingScrollPhysics(),
@@ -159,14 +186,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             _buildMiniBadge('Pest', AppColors.pestBadge),
                             _buildMiniBadge('Healthy', AppColors.healthyBadge),
                             _buildMiniBadge('Fungi', AppColors.fungiBadge),
+                            _buildMiniBadge('Bacteria', AppColors.bacteriaBadge),
+                            _buildMiniBadge('Nematode', AppColors.nematodeBadge),
+                            _buildMiniBadge('Phytophthora', AppColors.phytophthoraBadge),
                           ],
                         ),
                       ),
                       const SizedBox(height: 16),
 
-                      // Horizontal grid of the 4 leaf examples
+                      // Horizontal grid of the 7 leaf examples
                       SizedBox(
-                        height: 96,
+                        height: 120,
                         child: ListView.builder(
                           scrollDirection: Axis.horizontal,
                           physics: const BouncingScrollPhysics(),
@@ -273,10 +303,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Carousel of History
+                // Vertical Stack of History (latest 3 items)
                 _isLoading
-                    ? const SizedBox(
-                        height: 120,
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
                         child: Center(
                           child: CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFBBF06A)),
@@ -285,17 +315,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                     : _historyList.isEmpty
                         ? _buildHistoryPlaceholder()
-                        : SizedBox(
-                            height: 130,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              physics: const BouncingScrollPhysics(),
-                              itemCount: _historyList.length,
-                              itemBuilder: (context, index) {
-                                final item = _historyList[index];
-                                return _buildHistoryCarouselCard(item);
-                              },
-                            ),
+                        : Column(
+                            children: _historyList
+                                .take(3)
+                                .map((item) => _buildHistoryVerticalCard(item))
+                                .toList(),
                           ),
                 const SizedBox(height: 20),
               ],
@@ -340,14 +364,33 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 0.6,
           ),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(11),
-          child: _buildImage(
-            item.imageUrl,
-            width: double.infinity,
-            height: double.infinity,
-            fit: BoxFit.cover,
-          ),
+        child: Column(
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                child: _buildImage(
+                  item.imageUrl,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              child: Text(
+                item.diseaseName,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.white,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -379,59 +422,118 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHistoryCarouselCard(DetectionResult item) {
-    return GestureDetector(
-      onTap: () => _showDiseaseDialog(context, item),
-      child: FrostedContainer(
-        width: 110,
-        padding: EdgeInsets.zero,
-        borderRadius: 14,
-        margin: const EdgeInsets.only(right: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
-                child: _buildImage(
-                  item.imageUrl,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+  Widget _buildHistoryVerticalCard(DetectionResult item) {
+    return FrostedContainer(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.zero,
+      borderRadius: 16,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => HistoryDetailScreen(result: item),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              // Leaf Crop image
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.surface,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: _buildImage(
+                    item.imageUrl,
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.diseaseName,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.white,
+              const SizedBox(width: 14),
+
+              // Title and Date
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Disease Name
+                    Text(
+                      item.diseaseName,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.white,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 1),
+                    const SizedBox(height: 2),
+                    // Subtitle "Kondisi"
+                    Text(
+                      item.diseaseName.toLowerCase() == 'healthy'
+                          ? 'Kondisi: Sehat'
+                          : 'Kondisi: Penyakit',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Right side details: accuracy & date
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
                   Text(
                     '${item.confidence.toStringAsFixed(0)}% Akurasi',
                     style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFBBF06A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatDate(item.date),
+                    style: const TextStyle(
                       fontSize: 9,
-                      fontWeight: FontWeight.w600,
                       color: AppColors.textSecondary,
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(width: 4),
+              const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.gray),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  String _formatDate(DateTime date) {
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+
 
   void _showDiseaseDialog(BuildContext context, DetectionResult item) {
     showDialog(

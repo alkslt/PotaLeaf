@@ -100,7 +100,7 @@ class DetectionResult {
         DetectionResult(
           id: 'sample_nematode',
           diseaseName: 'Nematode',
-          diseaseType: 'Pest',
+          diseaseType: 'Nematode',
           confidence: 88.2,
           imageUrl: 'assets/placeholder/nematode.jpg',
           date: DateTime.now().subtract(const Duration(days: 8)),
@@ -122,7 +122,7 @@ class DetectionResult {
         DetectionResult(
           id: 'sample_phytophthora',
           diseaseName: 'Phytophthora',
-          diseaseType: 'Fungi',
+          diseaseType: 'Phytophthora',
           confidence: 89.4,
           imageUrl: 'assets/placeholder/phytophthora.jpg',
           date: DateTime.now().subtract(const Duration(days: 5)),

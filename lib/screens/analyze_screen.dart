@@ -8,6 +8,7 @@ import '../services/tflite_service.dart';
 import '../widgets/scanner_overlay_painter.dart';
 import '../widgets/frosted_container.dart';
 import 'result_screen.dart';
+import 'main_shell.dart';
 
 /// Analyze screen matching Figma's specifications with frosted glass and gradient buttons.
 class AnalyzeScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen>
   DetectionResult? _selectedSample;
   bool _isScanning = false;
   String _scanStatus = '';
+  List<DetectionResult> _historyList = [];
 
   late AnimationController _scanAnimController;
 
@@ -35,12 +37,26 @@ class _AnalyzeScreenState extends State<AnalyzeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
+    _loadHistory();
+    HistoryService.historyUpdateNotifier.addListener(_loadHistory);
   }
 
   @override
   void dispose() {
+    HistoryService.historyUpdateNotifier.removeListener(_loadHistory);
     _scanAnimController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    try {
+      final data = await HistoryService().getHistory();
+      if (mounted) {
+        setState(() {
+          _historyList = data;
+        });
+      }
+    } catch (_) {}
   }
 
   bool get _hasImage => _pickedFile != null || _selectedSample != null;
@@ -279,368 +295,385 @@ class _AnalyzeScreenState extends State<AnalyzeScreen>
 
   @override
   Widget build(BuildContext context) {
+    void activeBackAction() {
+      if (_hasImage) {
+        _clearImage();
+      } else {
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        } else {
+          context.findAncestorStateOfType<MainShellState>()?.setIndex(0);
+        }
+      }
+    }
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
-        child: _hasImage ? _buildScanningPreviewState() : _buildLandingPickerState(),
-      ),
-    );
-  }
-
-  /// State 1: Picking Options Layout matching Figma Analyze Page
-  Widget _buildLandingPickerState() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          const Text(
-            'Deteksi Penyakit',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: AppColors.white,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Card 1: Ambil Gambar (Frosted Glass)
-          FrostedContainer(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.camera_alt_rounded, color: AppColors.white, size: 22),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Ambil Gambar',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                // Gradient capsule Mulai button
-                Container(
-                  width: double.infinity,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(26),
-                    gradient: const LinearGradient(
-                      colors: AppColors.buttonGradient,
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFBBF06A).withValues(alpha: 0.35),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _pickImage(ImageSource.camera),
-                      borderRadius: BorderRadius.circular(26),
-                      child: const Center(
-                        child: Text(
-                          'Mulai',
-                          style: TextStyle(
-                            color: Color(0xFF0F120D),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Card 2: Unggah Gambar dari Galeri (Frosted Glass)
-          GestureDetector(
-            onTap: () => _pickImage(ImageSource.gallery),
-            child: FrostedContainer(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: const Column(
+        child: Column(
+          children: [
+            // ── Top Header ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(
                 children: [
-                  Icon(Icons.cloud_upload_outlined, color: AppColors.textSecondary, size: 44),
-                  SizedBox(height: 12),
-                  Text(
-                    'Unggah Gambar dari Galeri',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textSecondary,
+                  GestureDetector(
+                    onTap: activeBackAction,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: AppColors.darkGreen,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: AppColors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Text(
+                      'Deteksi Penyakit',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.white,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-          const Spacer(),
 
-          // Small Link for Examples
-          Center(
-            child: TextButton.icon(
-              onPressed: _showSamplePicker,
-              icon: const Icon(Icons.photo_library_outlined, size: 16, color: Color(0xFFBBF06A)),
-              label: const Text(
-                'Gunakan Contoh Gambar',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFBBF06A),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Footer: Disabled Analisis Penyakit button (represented beautifully as frosted outline card)
-          Container(
-            width: double.infinity,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.lightGray.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(
-                color: AppColors.lightGray.withValues(alpha: 0.3),
-                width: 1.0,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'Analisis Penyakit',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: AppColors.white.withValues(alpha: 0.4),
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  /// State 2: Camera scan active stream preview with target corner brackets overlay
-  Widget _buildScanningPreviewState() {
-    return Column(
-      children: [
-        // Top Custom Header matching Frame 5
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: Row(
-            children: [
-              // Circular Green Back Button
-              GestureDetector(
-                onTap: _clearImage,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: AppColors.darkGreen,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: AppColors.white),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
+            // ── Main scroll body ──
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Ambil Gambar',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.white,
-                      ),
-                    ),
-                    const Text(
-                      'Posisikan dengan sejajar',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Live/Selected Leaf scan preview with corner bracket overlay
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Stack(
-              children: [
-                // Rounded corner leaf preview
-                Positioned.fill(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: _selectedSample != null
-                        ? _buildImage(_selectedSample!.imageUrl)
-                        : _buildImage(_pickedFile!.path),
-                  ),
-                ),
-
-                // Corner bracket paint overlay
-                Positioned.fill(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: AnimatedBuilder(
-                      animation: _scanAnimController,
-                      builder: (context, child) {
-                        return CustomPaint(
-                          painter: ScannerOverlayPainter(
-                            animationValue: _scanAnimController.value,
-                            cornerLength: 36,
-                            strokeWidth: 4,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-
-                // Scanning transparent loader bar
-                if (_isScanning)
-                  Positioned(
-                    bottom: 24,
-                    left: 24,
-                    right: 24,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                    // Card 1: Ambil Gambar
+                    FrostedContainer(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFBBF06A)),
-                            ),
+                          Row(
+                            children: [
+                              const Icon(Icons.camera_alt_rounded, color: AppColors.white, size: 18),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Ambil Gambar',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.white,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _scanStatus,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.white,
-                              fontStyle: FontStyle.italic,
+                          const SizedBox(height: 12),
+                          Container(
+                            width: double.infinity,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(22),
+                              gradient: const LinearGradient(
+                                colors: AppColors.buttonGradient,
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _isScanning ? null : () => _pickImage(ImageSource.camera),
+                                borderRadius: BorderRadius.circular(22),
+                                child: const Center(
+                                  child: Text(
+                                    'Mulai Kamera',
+                                    style: TextStyle(
+                                      color: Color(0xFF0F120D),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
-        // Scanner Footer: Camera shutter button, cancel thumbnail
-        Padding(
-          padding: const EdgeInsets.only(left: 36, right: 36, bottom: 24),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Left: Refresh/Cancel icon
-              if (!_isScanning)
-                IconButton(
-                  onPressed: _clearImage,
-                  icon: const Icon(Icons.refresh_rounded, color: AppColors.white, size: 24),
-                )
-              else
-                const SizedBox(width: 48),
+                    // Card 2: Unggah Gambar dari Galeri (Container Preview Latching)
+                    GestureDetector(
+                      onTap: _isScanning
+                          ? null
+                          : () => _pickImage(ImageSource.gallery),
+                      child: FrostedContainer(
+                        width: double.infinity,
+                        height: 240,
+                        padding: EdgeInsets.zero,
+                        borderRadius: 20,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            if (!_hasImage)
+                              const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.cloud_upload_outlined, color: AppColors.textSecondary, size: 44),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'Unggah Gambar dari Galeri',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else
+                              Positioned.fill(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: _selectedSample != null
+                                      ? _buildImage(_selectedSample!.imageUrl)
+                                      : _buildImage(_pickedFile!.path),
+                                ),
+                              ),
 
-              // Center: Circular camera trigger shutter button (starts analysis) with linear gradient
-              GestureDetector(
-                onTap: _isScanning ? null : _startAnalysis,
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    gradient: _isScanning
-                        ? null
-                        : const LinearGradient(
-                            colors: AppColors.buttonGradient,
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
-                    color: _isScanning ? AppColors.surface : null,
-                    shape: BoxShape.circle,
-                    boxShadow: _isScanning
-                        ? null
-                        : [
-                            BoxShadow(
-                              color: const Color(0xFFBBF06A).withValues(alpha: 0.35),
-                              blurRadius: 14,
-                              offset: const Offset(0, 3),
-                            ),
+                            // Scanning laser animation overlay inside container
+                            if (_isScanning)
+                              Positioned.fill(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: AnimatedBuilder(
+                                    animation: _scanAnimController,
+                                    builder: (context, child) {
+                                      return CustomPaint(
+                                        painter: ScannerOverlayPainter(
+                                          animationValue: _scanAnimController.value,
+                                          cornerLength: 30,
+                                          strokeWidth: 3,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+
+                            // Loading state status text overlay
+                            if (_isScanning)
+                              Positioned(
+                                bottom: 16,
+                                left: 16,
+                                right: 16,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.8),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFBBF06A)),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          _scanStatus,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.white,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                            // Clear button overlay if image is loaded
+                            if (_hasImage && !_isScanning)
+                              Positioned(
+                                top: 12,
+                                right: 12,
+                                child: GestureDetector(
+                                  onTap: _clearImage,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
+                                  ),
+                                ),
+                              ),
                           ],
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt_rounded,
-                    color: Color(0xFF0F120D),
-                    size: 28,
-                  ),
-                ),
-              ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-              // Right: Thumbnail of the gallery/chosen item
-              GestureDetector(
-                onTap: _isScanning ? null : _showSamplePicker,
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.white.withValues(alpha: 0.6), width: 1.2),
-                    color: AppColors.surface,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(7),
-                    child: _selectedSample != null
-                        ? _buildImage(_selectedSample!.imageUrl)
-                        : _pickedFile != null
-                            ? _buildImage(_pickedFile!.path)
-                            : const Icon(Icons.photo_library_outlined, size: 16, color: AppColors.white),
-                  ),
+                    // Trigger Contoh Gambar directly
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: _isScanning ? null : _showSamplePicker,
+                        icon: const Icon(Icons.photo_library_outlined, size: 16, color: Color(0xFFBBF06A)),
+                        label: const Text(
+                          'Gunakan Contoh Gambar',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFFBBF06A),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Bottom main Analisis Penyakit button
+                    Container(
+                      width: double.infinity,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(26),
+                        gradient: _hasImage
+                            ? const LinearGradient(
+                                colors: AppColors.buttonGradient,
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              )
+                            : null,
+                        color: _hasImage ? null : AppColors.lightGray.withValues(alpha: 0.1),
+                        border: _hasImage
+                            ? null
+                            : Border.all(
+                                color: AppColors.lightGray.withValues(alpha: 0.3),
+                                width: 1.0,
+                              ),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: (_hasImage && !_isScanning) ? _startAnalysis : null,
+                          borderRadius: BorderRadius.circular(26),
+                          child: Center(
+                            child: _isScanning
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Color(0xFF0F120D),
+                                      strokeWidth: 2.5,
+                                    ),
+                                  )
+                                : Text(
+                                    'Analisis Penyakit',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w900,
+                                      color: _hasImage
+                                          ? const Color(0xFF0F120D)
+                                          : AppColors.white.withValues(alpha: 0.4),
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Previous analysis images row
+                    if (_historyList.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Gambar Riwayat Analisis',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 70,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: _historyList.length,
+                          itemBuilder: (context, index) {
+                            final item = _historyList[index];
+                            final isSelected = (_selectedSample?.imageUrl == item.imageUrl || _pickedFile?.path == item.imageUrl);
+                            return GestureDetector(
+                              onTap: () {
+                                if (!_isScanning) {
+                                  setState(() {
+                                    if (item.imageUrl.startsWith('assets/')) {
+                                      final sampleMatch = DetectionResult.staticSamples.firstWhere(
+                                        (s) => s.imageUrl == item.imageUrl,
+                                        orElse: () => item,
+                                      );
+                                      _selectedSample = sampleMatch;
+                                      _pickedFile = null;
+                                    } else {
+                                      _pickedFile = XFile(item.imageUrl);
+                                      _selectedSample = null;
+                                    }
+                                  });
+                                }
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 12),
+                                width: 70,
+                                height: 70,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected ? AppColors.limeAccent : Colors.transparent,
+                                    width: 2.0,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: _buildImage(
+                                    item.imageUrl,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

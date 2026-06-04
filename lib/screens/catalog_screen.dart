@@ -55,6 +55,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
         return AppColors.fungiBadge;
       case 'Bacteria':
         return AppColors.bacteriaBadge;
+      case 'Nematode':
+        return AppColors.nematodeBadge;
+      case 'Phytophthora':
+        return AppColors.phytophthoraBadge;
       default:
         return AppColors.gray;
     }
@@ -198,7 +202,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Widget _buildCategoryFilters() {
-    final categories = ['Semua', 'Virus', 'Pest', 'Healthy', 'Fungi', 'Bacteria'];
+    final categories = ['Semua', 'Virus', 'Pest', 'Healthy', 'Fungi', 'Bacteria', 'Nematode', 'Phytophthora'];
 
     return SizedBox(
       height: 38,

@@ -5,6 +5,7 @@ import '../models/detection_result.dart';
 import '../services/history_service.dart';
 import '../widgets/frosted_container.dart';
 import 'history_detail_screen.dart';
+import 'main_shell.dart';
 
 /// Screen displaying the list of past plant disease detections with frosted glass cards.
 class HistoryScreen extends StatefulWidget {
@@ -27,6 +28,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _loadHistory();
+    HistoryService.historyUpdateNotifier.addListener(_loadHistory);
+  }
+
+  @override
+  void dispose() {
+    HistoryService.historyUpdateNotifier.removeListener(_loadHistory);
+    super.dispose();
   }
 
   Future<void> _loadHistory() async {
@@ -185,6 +193,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
         return AppColors.fungiBadge;
       case 'Bacteria':
         return AppColors.bacteriaBadge;
+      case 'Nematode':
+        return AppColors.nematodeBadge;
+      case 'Phytophthora':
+        return AppColors.phytophthoraBadge;
       default:
         return AppColors.gray;
     }
@@ -255,13 +267,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: AppColors.darkGreen,
-                      shape: BoxShape.circle,
+                  GestureDetector(
+                    onTap: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        context.findAncestorStateOfType<MainShellState>()?.setIndex(0);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: AppColors.darkGreen,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: AppColors.white),
                     ),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: AppColors.white),
                   ),
                   const SizedBox(width: 14),
                   const Expanded(
@@ -373,7 +394,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildFilterRow() {
-    final filters = ['Semua', 'Virus', 'Pest', 'Healthy', 'Fungi', 'Bacteria'];
+    final filters = ['Semua', 'Virus', 'Pest', 'Healthy', 'Fungi', 'Bacteria', 'Nematode', 'Phytophthora'];
 
     return Container(
       height: 48,

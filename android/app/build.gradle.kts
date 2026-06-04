@@ -2,6 +2,45 @@ plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
+}
+
+val rootGoogleServices = file("../../google-services.json")
+val googleServicesJson = file("google-services.json")
+if (rootGoogleServices.exists()) {
+    rootGoogleServices.copyTo(googleServicesJson, overwrite = true)
+} else if (!googleServicesJson.exists()) {
+    googleServicesJson.writeText("""
+    {
+      "project_info": {
+        "project_number": "1234567890",
+        "project_id": "mock-potaleaf",
+        "storage_bucket": "mock-potaleaf.appspot.com"
+      },
+      "client": [
+        {
+          "client_info": {
+            "mobilesdk_app_id": "1:1234567890:android:abcdef123456",
+            "android_client_info": {
+              "package_name": "com.example.alya_project"
+            }
+          },
+          "oauth_client": [],
+          "api_key": [
+            {
+              "current_key": "mock_api_key_for_local_testing"
+            }
+          ],
+          "services": {
+            "appinvite_service": {
+              "other_platform_oauth_client": []
+            }
+          }
+        }
+      ],
+      "configuration_version": "3"
+    }
+    """.trimIndent())
 }
 
 android {

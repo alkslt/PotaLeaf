@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "292535902257",
+    "project_id": "potaleaf-alya",
+    "storage_bucket": "potaleaf-alya.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:292535902257:android:5d056f00879e7a6a353510",
+        "android_client_info": {
+          "package_name": "com.example.alya_project"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "292535902257-4m0jv20vmhcslkbo4cjb27q9b8po81p2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.alya_project",
+            "certificate_hash": "d48014ca2ec9756cf495b926180ea19dfad9e79c"
+          }
+        },
+        {
+          "client_id": "292535902257-h4pq3a6grq6t12dmqu5gicnpuuo3pba1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAKzsEUUhbrOph24jSUXfeHJp5LFowsaHY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "292535902257-h4pq3a6grq6t12dmqu5gicnpuuo3pba1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

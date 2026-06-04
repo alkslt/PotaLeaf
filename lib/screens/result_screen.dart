@@ -27,6 +27,10 @@ class _ResultScreenState extends State<ResultScreen> {
         return AppColors.fungiBadge;
       case 'Bacteria':
         return AppColors.bacteriaBadge;
+      case 'Nematode':
+        return AppColors.nematodeBadge;
+      case 'Phytophthora':
+        return AppColors.phytophthoraBadge;
       default:
         return AppColors.gray;
     }

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../services/tflite_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/frosted_container.dart';
 import 'information_screen.dart';
+import 'login_screen.dart';
+import 'main_shell.dart';
 
 /// Profile page designed exactly matching Figma's specifications with frosted glass panels, about button, and onboarding reset.
 class ProfileScreen extends StatefulWidget {
@@ -14,9 +17,27 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final TextEditingController _nameController = TextEditingController(text: 'meow');
-  final TextEditingController _emailController = TextEditingController(text: 'meowmeow@gmail.com');
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   bool _saved = false;
+  String _displayName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final user = await AuthService.getCurrentUser();
+    if (mounted) {
+      setState(() {
+        _nameController.text = user['name'] ?? '';
+        _emailController.text = user['email'] ?? '';
+        _displayName = user['name'] ?? '';
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -57,26 +78,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _onSave() {
-    setState(() => _saved = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text(
-          'Profil berhasil disimpan!',
-          style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: AppColors.darkGray,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: AppColors.limeAccent, width: 1.0),
-        ),
-        duration: const Duration(seconds: 1),
-      ),
-    );
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) setState(() => _saved = false);
-    });
+  Future<void> _onSave() async {
+    try {
+      await AuthService.updateProfile(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+      );
+      if (mounted) {
+        setState(() {
+          _saved = true;
+          _displayName = _nameController.text.trim();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Profil berhasil disimpan!',
+              style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: AppColors.darkGray,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: AppColors.limeAccent, width: 1.0),
+            ),
+            duration: const Duration(seconds: 1),
+          ),
+        );
+        Future.delayed(const Duration(seconds: 1), () {
+          if (mounted) setState(() => _saved = false);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan profil: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _onLogout() async {
+    await AuthService.signOut();
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -96,13 +148,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: AppColors.darkGreen,
-                          shape: BoxShape.circle,
+                      GestureDetector(
+                        onTap: () {
+                          if (Navigator.canPop(context)) {
+                            Navigator.pop(context);
+                          } else {
+                            context.findAncestorStateOfType<MainShellState>()?.setIndex(0);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: AppColors.darkGreen,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: AppColors.white),
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: AppColors.white),
                       ),
                       const SizedBox(width: 14),
                       const Expanded(
@@ -159,36 +220,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ],
                             ),
                           ),
-                          // The Cat Image Circular Crop
+                          // Profile Placeholder Icon Container
                           Container(
                             width: 114,
                             height: 114,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
+                              color: const Color(0x1AFFFFFF),
                               border: Border.all(
                                 color: const Color(0x99BBF06A),
                                 width: 3.0,
                               ),
                             ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(57),
-                              child: Image.asset(
-                                'assets/placeholder/cat.jpg',
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => const Icon(
-                                  Icons.pets_rounded,
-                                  size: 48,
-                                  color: AppColors.gray,
-                                ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.person_rounded,
+                                size: 54,
+                                color: AppColors.limeAccent,
                               ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'Meowww',
-                        style: TextStyle(
+                      Text(
+                        _displayName.isNotEmpty ? _displayName : 'Pengguna PotaLeaf',
+                        style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textSecondary,
@@ -376,6 +433,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             'About',
                             style: TextStyle(
                               color: Color(0xFF0F120D),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.virusBadge, width: 1.5),
+                    ),
+                    width: 120,
+                    height: 38,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _onLogout,
+                        borderRadius: BorderRadius.circular(20),
+                        child: const Center(
+                          child: Text(
+                            'Keluar',
+                            style: TextStyle(
+                              color: AppColors.virusBadge,
                               fontSize: 13,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,

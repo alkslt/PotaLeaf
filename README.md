@@ -1,6 +1,6 @@
 # Implementasi Model CNN Dalam Sistem Pendeteksi Penyakit Daun Tanaman Kentang Berbasis Android
 
-Aplikasi mobile berbasis Android untuk mendeteksi penyakit daun tanaman kentang secara offline (*on-device inference*) dengan mendukung perbandingan performa antara dua arsitektur CNN terkemuka.
+Aplikasi mobile berbasis Android untuk mendeteksi penyakit daun tanaman kentang secara offline (*on-device inference*) dengan mendukung perbandingan performa antara dua arsitektur CNN terkemuka, dilengkapi sistem autentikasi Firebase terpadu.
 
 ---
 
@@ -14,7 +14,9 @@ Aplikasi mobile berbasis Android untuk mendeteksi penyakit daun tanaman kentang 
 ## 📝 Deskripsi Singkat Project
 **LeafScan Kentang** adalah aplikasi mobile berbasis Android yang dikembangkan untuk mendeteksi dan mengklasifikasikan 7 jenis kondisi/penyakit pada daun kentang secara cepat dan presisi. 
 
-Aplikasi ini dirancang untuk mendukung penelitian perbandingan performa arsitektur *Deep Learning* di perangkat mobile. Pengguna dapat membuild aplikasi ini menggunakan model yang berbeda (MobileNetV2 atau ResNet50) melalui konfigurasi kode tingkat kompilasi (*dual-build*). Inferensi dilakukan sepenuhnya secara lokal tanpa memerlukan konektivitas internet.
+Aplikasi ini dirancang untuk mendukung penelitian perbandingan performa arsitektur *Deep Learning* di perangkat mobile. Pengguna dapat membuild aplikasi ini menggunakan model yang berbeda (MobileNetV2 atau ResNet50) melalui konfigurasi kode tingkat kompilasi (*dual-build*). Inferensi dilakukan sepenuhnya secara lokal tanpa memerlukan konektivitas internet. 
+
+Aplikasi ini sekarang juga dilengkapi dengan **sistem autentikasi terpadu** (Email/Password dan Google SSO) yang fleksibel dengan penyimpanan data riwayat pemindaian yang tersinkronisasi di memori lokal.
 
 ---
 
@@ -49,13 +51,24 @@ Gambar dari kamera atau galeri diproses dengan teknik manipulasi piksel khusus s
 
 ---
 
+## 🔒 Sistem Autentikasi Terpadu (Dual-Auth)
+Aplikasi mendukung alur masuk & pendaftaran pengguna yang seamless menggunakan dua metode utama:
+1.  **Email & Kata Sandi**: Pengguna mendaftar dengan Nama, Email, dan Sandi. Akun dibuat secara terpusat di database Firebase Auth.
+2.  **Google SSO (Single Sign-On)**: Integrasi cepat satu ketukan menggunakan kredensial akun Google pengguna. Tombol ini tersedia baik di halaman Login maupun Signup lengkap dengan aset ikon Google transparan beresolusi tinggi.
+3.  **Mode Offline Fallback Sandbox**: Jika file `google-services.json` belum diisi saat development atau perangkat tidak memiliki koneksi internet, sistem secara cerdas akan mengaktifkan *Mock Sandbox Mode*. Pengguna tetap bisa melakukan registrasi, masuk, menyimpan profil, dan melihat riwayat secara lokal menggunakan database simulator berbasis `SharedPreferences`.
+
+---
+
 ## 📚 Library yang Digunakan
 Aplikasi ini dikembangkan menggunakan framework **Flutter** dan dependensi pihak ketiga berikut:
 *   `tflite_flutter` (v0.12.1): Pustaka inti untuk memuat interpreter dan mengeksekusi inferensi model TFLite secara luring (*on-device*).
 *   `image` (v4.8.0): Library pemrosesan citra digital untuk center cropping, resizing, decoding, dan memanipulasi byte piksel mentah.
 *   `image_picker` (v1.1.2): API pemilih gambar untuk menangkap foto langsung dari kamera ponsel atau memuat citra dari galeri lokal.
-*   `shared_preferences` (v2.2.3): Untuk menyimpan data histori hasil identifikasi penyakit secara permanen di memori lokal.
+*   `shared_preferences` (v2.2.3): Menyimpan data histori hasil identifikasi dan data profil/nama pengguna secara lokal di memori HP.
 *   `google_fonts` (v6.2.1): Integrasi fon Google Poppins untuk mewujudkan tampilan antarmuka (UI) aplikasi yang bersih, modern, dan premium.
+*   `firebase_core` (v2.27.0): Pustaka dasar integrasi Firebase SDK pada Flutter.
+*   `firebase_auth` (v4.17.8): Mengelola otentikasi pengguna secara aman (Email/Sandi & Google Sign-In).
+*   `google_sign_in` (v6.2.1): Penanganan alur otentikasi Google SSO pihak ketiga.
 
 ---
 
@@ -64,15 +77,18 @@ Direktori project diatur secara bersih berdasarkan fungsionalitas dan arsitektur
 ```text
 alya_project/
 ├── assets/
-│   ├── logo/                # Aset logo aplikasi (app_logo.png)
+│   ├── logo/                # Aset logo aplikasi (logo_potaleaf.png, google_logo.png)
+│   ├── placeholder/         # Gambar dan aset placeholder sistem
 │   └── tflite/              # File model TFLite (MobileNetV2_Final.tflite & ResNet50_Final.tflite)
 ├── lib/
-│   ├── screens/             # Tampilan Antarmuka (Home, Scan, History, About)
-│   ├── services/            # Logika Backend (TFLite Inference & History SharedPreferences)
+│   ├── models/              # Model data project (detection_result.dart)
+│   ├── screens/             # Tampilan Antarmuka (Home, Analyze, History, Profile, Login, Signup)
+│   ├── services/            # Logika Backend (Auth, TFLite Inference, SharedPreferences)
+│   │   ├── auth_service.dart
 │   │   ├── history_service.dart
 │   │   └── tflite_service.dart
 │   ├── theme/               # Konfigurasi visual palette warna hijau dan font Poppins
-│   ├── widgets/             # Komponen UI kustom modular
+│   ├── widgets/             # Komponen UI kustom modular (AmbientBackground, FrostedContainer)
 │   └── main.dart            # Titik awal eksekusi aplikasi
 └── pubspec.yaml             # Deklarasi pustaka, font, dan aset folder
 ```
@@ -80,12 +96,13 @@ alya_project/
 ---
 
 ## ⚙️ Penjelasan Singkat Kode dan Fungsi Aplikasi
-1.  **`main.dart`**: Entry-point aplikasi yang menyiapkan tema global aplikasi dan merutekan navigasi utama.
-2.  **`tflite_service.dart`**:
+1.  **`main.dart`**: Entry-point aplikasi yang menyiapkan tema global aplikasi dan merutekan navigasi utama (mengarahkan ke Onboarding, Login, atau langsung Dashboard utama berdasarkan status login pengguna).
+2.  **`auth_service.dart`**: Layanan manajemen otentikasi pengguna terpadu untuk Email & Password serta Google SSO. Menyediakan pencadangan data lokal otomatis serta simulator sandbox jika Firebase tidak diaktifkan.
+3.  **`tflite_service.dart`**:
     *   Membaca konstanta switch `activeModel` (bertipe `ModelType`) untuk memuat model `.tflite` yang aktif dari aset.
     *   Melakukan pemrosesan spasial gambar (center crop dan resizing $224 \times 224$ piksel).
     *   Mengalokasikan data piksel ke dalam array 4-dimensi `[1, 224, 224, 3]`.
     *   Menerapkan fungsi pra-pemrosesan saluran warna yang dinamis (normalisasi RGB untuk MobileNetV2, dan transformasi BGR pengurangan rata-rata ImageNet untuk ResNet50).
     *   Menjalankan inferensi dan menghitung hasil probabilitas kelas penyakit kentang.
     *   **Fitur Pelicin Akademis (*Academic Jitter*)**: Menyertakan algoritma modifikasi nilai kepercayaan (*confidence score*) secara dinamis pada rentang desimal yang halus jika akurasi mendekati 100%. Hal ini dirancang agar hasil prediksi pada demo pengujian di depan dosen penguji skripsi terlihat lebih alami dan realistis tanpa mengorbankan ketepatan label deteksi.
-3.  **`history_service.dart`**: Layanan manajemen database lokal untuk menyimpan, mengambil, dan menghapus riwayat pemindaian penyakit tanaman kentang pengguna menggunakan format penyimpanan serialisasi JSON pada `SharedPreferences`.
+4.  **`history_service.dart`**: Layanan manajemen database lokal untuk menyimpan, mengambil, dan menghapus riwayat pemindaian penyakit tanaman kentang pengguna. Dilengkapi dengan **`ValueNotifier`** terintegrasi, yang menyebarkan pembaruan database secara real-time ke halaman Dashboard Utama dan Riwayat untuk menjamin sinkronisasi instan tanpa lag.
