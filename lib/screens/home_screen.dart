@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../theme/app_colors.dart';
 import '../models/detection_result.dart';
 import '../services/history_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/frosted_container.dart';
 import 'history_detail_screen.dart';
 
@@ -40,11 +41,13 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadHistory();
     _loadUserName();
     HistoryService.historyUpdateNotifier.addListener(_loadHistory);
+    AuthService.userUpdateNotifier.addListener(_loadUserName);
   }
 
   @override
   void dispose() {
     HistoryService.historyUpdateNotifier.removeListener(_loadHistory);
+    AuthService.userUpdateNotifier.removeListener(_loadUserName);
     super.dispose();
   }
 

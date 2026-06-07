@@ -9,6 +9,7 @@ class AuthService {
   AuthService._();
 
   static bool isFirebaseInitialized = false;
+  static final ValueNotifier<String> userUpdateNotifier = ValueNotifier<String>('');
 
   /// Initialize Firebase with a try-catch block for safe fallback
   static Future<void> init() async {
@@ -257,6 +258,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_name', name);
     await prefs.setString('user_email', email);
+    userUpdateNotifier.value = name;
 
     // Also update in mock database if it exists
     if (!isFirebaseInitialized) {
